@@ -1,0 +1,68 @@
+CREATE TABLE dbo.Student_History (
+    history_id INT IDENTITY(1,1) PRIMARY KEY,
+    student_id INT,
+    first_name NVARCHAR(50),
+    middle_name NVARCHAR(50),
+    last_name NVARCHAR(50),
+    student_branch NVARCHAR(50),
+    student_marks INT,
+    action_type NVARCHAR(10), -- 'INSERT', 'UPDATE', 'DELETE'
+    action_time DATETIME DEFAULT GETDATE(),
+    changed_by NVARCHAR(128) DEFAULT SUSER_SNAME()
+);
+
+
+CREATE OR ALTER TRIGGER trg_Student_Insert_History
+ON dbo.Student
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO dbo.Student_History (student_id, first_name, middle_name, last_name, student_branch, student_marks, action_type, action_time, changed_by)
+    SELECT 
+        i.student_id, i.first_name, i.middle_name, i.last_name, i.student_branch, i.student_marks,
+        'INSERT', GETDATE(), SUSER_SNAME()
+    FROM inserted i;
+END
+
+
+CREATE OR ALTER TRIGGER trg_Student_Update_History
+ON dbo.Student
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO dbo.Student_History (student_id, first_name, middle_name, last_name, student_branch, student_marks, action_type, action_time, changed_by)
+    SELECT 
+        i.student_id, i.first_name, i.middle_name, i.last_name, i.student_branch, i.student_marks,
+        'UPDATE', GETDATE(), SUSER_SNAME()
+    FROM inserted i;
+END
+
+
+CREATE OR ALTER TRIGGER trg_Student_Delete_History
+ON dbo.Student
+AFTER DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO dbo.Student_History (student_id, first_name, middle_name, last_name, student_branch, student_marks, action_type, action_time, changed_by)
+    SELECT 
+        d.student_id, d.first_name, d.middle_name, d.last_name, d.student_branch, d.student_marks,
+        'DELETE', GETDATE(), SUSER_SNAME()
+    FROM deleted d;
+END
+
+
+CREATE OR ALTER PROCEDURE dbo.GetStudentHistory
+    @student_id INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF @student_id IS NULL
+        SELECT * FROM dbo.Student_History ORDER BY action_time DESC;
+    ELSE
+        SELECT * FROM dbo.Student_History WHERE student_id = @student_id ORDER BY action_time DESC;
+END
+
+
